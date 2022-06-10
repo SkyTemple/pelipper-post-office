@@ -1,9 +1,9 @@
 [package]
-name = "wingull-flight-center"
+name = "pelipper-post-office"
 version = "0.1.0"
 authors = ["Marco 'Capypara' Köpcke <hello@capypara.de>"]
 edition = "2021"
-repository = "https://github.com/SkyTemple/wingull-flight-center"
+repository = "https://github.com/SkyTemple/pelipper-post-office"
 license = "GPL-3.0-or-later"
 
 [features]

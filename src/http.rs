@@ -13,6 +13,7 @@ use tokio::sync::RwLockWriteGuard;
 use crate::backend::backends::BackendsRef;
 use crate::backend::sessions::SessionsBackend;
 use crate::backend::users::UserInfo;
+use crate::gamestats::set_profile::gs_set_profile;
 use crate::util::VERSION;
 //use tokio_native_tls::native_tls::{Identity, Protocol};
 //use tokio_native_tls::{native_tls, TlsAcceptor, TlsStream};
@@ -136,12 +137,9 @@ async fn svc_http_service(req: Request<Body>, backends: BackendsRef) -> Result<R
     let (host, method, path) = (extract_host(&req), req.method(), req.uri().path());
     debug!("HTTP request: {:?}", (&host, method, path));
     match (host.as_str(), method, path) {
-        (crate::dns::DN_CONNTEST, &Method::GET, "/") => Ok(Response::new(Body::from(
-            "OK",
-        ))),
-
+        (crate::dns::DN_CONNTEST, &Method::GET, "/") => Ok(Response::new(Body::from("OK", ))),
         (crate::dns::DN_NAS, &Method::POST, "/ac") => gs_register(req, backends).await,
-
+        (crate::dns::DN_GAMESTATS, &Method::GET, "/pokedungeonds/web/common/setProfile.asp") => gs_set_profile(req, backends).await,
         // Return the 404 Not Found for other routes.
         _ => {
             let mut not_found = Response::default();

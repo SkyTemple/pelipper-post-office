@@ -25,6 +25,7 @@ const MASTER_DOMAIN: &'static str = "wc.skytemple.org";
 
 pub(crate) const DN_CONNTEST: &'static str = concatcp!("conntest.", MASTER_DOMAIN);
 pub(crate) const DN_NAS: &'static str = concatcp!("nas.", MASTER_DOMAIN);
+pub(crate) const DN_GAMESTATS: &'static str = concatcp!("gamestats2.gs.", MASTER_DOMAIN);
 const DNS_NAMES: [&'static str; 7] = [
     MASTER_DOMAIN,
     DN_NAS,

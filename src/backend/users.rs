@@ -123,6 +123,7 @@ impl UsersBackend {
     }
 
     pub async fn create_or_loadfrom_hashmap(&mut self, gs_input_data: HashMap<String, String>, games: RwLockReadGuard<'_, GamesBackend>) -> Result<&UserInfo, Error> {
+        // todo acctcreate not supported (gsbrcd empty!), used when deleting wifi data -> need to index via userid and gamecd (id) instead of uniquenick :(
         if gs_input_data.get("action").map(|x| x.as_str()) != Some("login") {
             return Err(anyhow!("Invalid user creation request: 'action' must be 'login', is: {:?}", gs_input_data.get("action")))
         }

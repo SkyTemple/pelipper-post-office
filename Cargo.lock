@@ -652,6 +652,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "pelipper-post-office"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "chrono",
+ "clru",
+ "const_format",
+ "data-encoding",
+ "directories",
+ "futures",
+ "hyper",
+ "indexmap",
+ "itertools",
+ "log",
+ "md5",
+ "packed_struct",
+ "rand",
+ "stderrlog",
+ "structopt",
+ "tokio",
+ "trust-dns-server",
+]
+
+[[package]]
 name = "percent-encoding"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1255,31 +1280,6 @@ name = "winapi-x86_64-pc-windows-gnu"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
-
-[[package]]
-name = "wingull-flight-center"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bytes",
- "chrono",
- "clru",
- "const_format",
- "data-encoding",
- "directories",
- "futures",
- "hyper",
- "indexmap",
- "itertools",
- "log",
- "md5",
- "packed_struct",
- "rand",
- "stderrlog",
- "structopt",
- "tokio",
- "trust-dns-server",
-]
 
 [[package]]
 name = "wyz"

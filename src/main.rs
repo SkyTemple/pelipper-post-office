@@ -9,6 +9,7 @@ mod gs_tcp;
 mod gs_udp;
 mod util;
 mod backend;
+mod gamestats;
 
 use std::net::Ipv4Addr;
 use std::sync::Arc;
@@ -66,7 +67,7 @@ async fn main() -> Result<(), Error> {
         .timestamp(stderrlog::Timestamp::Millisecond)
         .init()?;
 
-    info!("wingull-flight-center is starting...");
+    info!("pelipper-post-office is starting...");
 
     let backends_ref = Arc::new(RwLock::new(Backends::new()));
     let mut servers = vec![];
