@@ -129,8 +129,24 @@ impl UsersBackend {
         gs_input_data: HashMap<String, String>,
         games: RwLockReadGuard<'_, GamesBackend>,
     ) -> Result<&UserInfo, Error> {
-        // todo acctcreate not supported (gsbrcd empty!), used when deleting wifi data -> need to index via userid and gamecd (id) instead of uniquenick :(
+        // todo acctcreate not properly supported (gsbrcd empty!), used when doing conntest and deleting wifi data -> need to index via userid and gamecd (id) instead of uniquenick :(
         if gs_input_data.get("action").map(|x| x.as_str()) != Some("login") {
+            // data during conntest:
+            // pelipper-post-office-ppo-1  | [src/backend/users.rs:134] &gs_input_data = {
+            // pelipper-post-office-ppo-1  |     "apinfo": "00:0000000-00",
+            // pelipper-post-office-ppo-1  |     "devtime": "231109222233",
+            // pelipper-post-office-ppo-1  |     "devname": "melonDS",
+            // pelipper-post-office-ppo-1  |     "gamecd": "C2SE",
+            // pelipper-post-office-ppo-1  |     "sdkver": "003001",
+            // pelipper-post-office-ppo-1  |     "macadr": "0009bf112233",
+            // pelipper-post-office-ppo-1  |     "userid": "5877937928489",
+            // pelipper-post-office-ppo-1  |     "makercd": "01",
+            // pelipper-post-office-ppo-1  |     "lang": "01",
+            // pelipper-post-office-ppo-1  |     "birth": "0101",
+            // pelipper-post-office-ppo-1  |     "action": "acctcreate",
+            // pelipper-post-office-ppo-1  |     "passwd": "813",
+            // pelipper-post-office-ppo-1  |     "bssid": "00f077777777",
+            // pelipper-post-office-ppo-1  |     "unit
             return Err(anyhow!(
                 "Invalid user creation request: 'action' must be 'login', is: {:?}",
                 gs_input_data.get("action")

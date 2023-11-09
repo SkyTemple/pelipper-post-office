@@ -15,15 +15,3 @@ services:
       - "--dns-ip"
       - "192.168.178.20"
     stop_grace_period: 10s
-  aptible:
-    image: pelipper-post-office-https-proxy
-    build: https-proxy
-    environment:
-      UPSTREAM_SERVERS: "ppo:80"
-      FORCE_SSL: "true"
-      SSL_CIPHERS: "ALL"
-    ports:
-      - "0.0.0.0:443:443"
-    volumes:
-      - './https-proxy/nas.key:/etc/nginx/ssl/server.key'
-      - './https-proxy/nas.chain.crt:/etc/nginx/ssl/server.crt'
