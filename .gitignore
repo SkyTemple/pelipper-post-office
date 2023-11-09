@@ -2,4 +2,5 @@
 .idea
 *.key
 *.crt
+*.pub
 *.pub.nds

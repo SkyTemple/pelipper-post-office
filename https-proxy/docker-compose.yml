@@ -1,0 +1,13 @@
+version: '3.3'
+services:
+  aptible:
+    environment:
+      UPSTREAM_SERVERS: "172.17.0.1:80"
+      FORCE_SSL: "true"
+      SSL_CIPHERS: "ALL"
+    ports:
+      - "0.0.0.0:443:443"
+    volumes:
+      - './tls.pem.key:/etc/nginx/ssl/server.key'
+      - './tls.pem.crt:/etc/nginx/ssl/server.crt'
+    build: .
