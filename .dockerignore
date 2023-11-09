@@ -1,0 +1,13 @@
+/target
+/searchb-rs
+.idea
+*.key
+*.crt
+*.pub
+*.pub.mod
+Dockerfile
+docker-compose.yml
+README.md
+Makefile
+/https-proxy
+/rom

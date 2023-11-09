@@ -1,6 +1,12 @@
 /target
+/searchb-rs/target
+/rom
+!/rom/orig-rom/tls.der.pub.mod
+!/rom/orig-rom/domain
 .idea
 *.key
 *.crt
+*.csr
+*.srl
 *.pub
-*.pub.nds
+*.pub.mod

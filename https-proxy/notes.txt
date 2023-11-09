@@ -1,5 +1,0 @@
-openssl req -x509 -sha256 -nodes -days 3650 -newkey rsa:1024 -keyout tls.pem.key -out ctls.der.crt
-openssl x509 -pubkey -noout -in tls.der.crt -inform DER > tls.der.pub
-# (and then see https://crypto.stackexchange.com/questions/18031/how-to-find-modulus-from-a-rsa-public-key for 128 byte key extraction)
-# eg.: openssl rsa -pubin -in tls.der.pub -modulus -noout
-openssl pkcs12 export -out identity.pfx -inkey key.pem -in cert.pem -certfile chain_certs.pem
