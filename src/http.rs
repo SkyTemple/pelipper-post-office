@@ -4,7 +4,6 @@ use anyhow::{anyhow, Error};
 use chrono::Utc;
 use const_format::concatcp;
 use data_encoding::{BASE64, DecodeError};
-//use async_stream::{AsyncStream, stream};
 use hyper::{Body, body, Method, Request, Response, Server, StatusCode};
 use hyper::service::{make_service_fn, service_fn};
 use itertools::Itertools;
@@ -15,8 +14,6 @@ use crate::backend::sessions::SessionsBackend;
 use crate::backend::users::UserInfo;
 use crate::gamestats::set_profile::gs_set_profile;
 use crate::util::VERSION;
-//use tokio_native_tls::native_tls::{Identity, Protocol};
-//use tokio_native_tls::{native_tls, TlsAcceptor, TlsStream};
 
 fn extract_host(req: &Request<Body>) -> String {
     match req.headers().get("Host").map(|x| x.to_str()) {
@@ -149,31 +146,9 @@ async fn svc_http_service(req: Request<Body>, backends: BackendsRef) -> Result<R
     }
 }
 
-pub async fn run_http<'a>(http_port: u16/*, https_port: u16, cert: Identity*/, backends: BackendsRef) -> Result<(), anyhow::Error> {
+pub async fn run_http<'a>(http_port: u16, backends: BackendsRef) -> Result<(), anyhow::Error> {
     let http_addr = SocketAddr::from(([0, 0, 0, 0], http_port));
-    /*let https_addr = SocketAddr::from(([0, 0, 0, 0], https_port));
 
-    let mut builder = native_tls::TlsAcceptor::builder(cert);
-    builder.min_protocol_version(Some(Protocol::Sslv3));
-    builder.max_protocol_version(Some(Protocol::Tlsv12));
-    let tls_acceptor = TlsAcceptor::from(builder.build()?);
-    let tcp_https = TcpListener::bind(&https_addr).await?;
-    let incoming_tls_stream: AsyncStream<Result<TlsStream<TcpStream>, io::Error>, _> = stream! {
-        loop {
-            let (socket, _) = tcp_https.accept().await?;
-             match tls_acceptor.accept(socket).await {
-                Ok(v) => yield Ok(v),
-                Err(e) => {
-                    warn!("TLS accept error! {:?}", e);
-                    //Err(e)
-                }
-            }
-        }
-    };
-    let acceptor = accept::from_stream(incoming_tls_stream);
-
-    let server_https = Server::builder(acceptor).serve(make_service_fn(|_| async { Ok::<_, hyper::Error>(service_fn(svc_http_service)) }));*/
-    // rust sure is beautiful sometimes:
     let server_http = Server::bind(&http_addr)
         .serve(make_service_fn(move |_| {
             let ibackends = backends.clone();
@@ -184,7 +159,6 @@ pub async fn run_http<'a>(http_port: u16/*, https_port: u16, cert: Identity*/, b
                 }))
             }
         }));
-    info!("HTTP server running on TCP {}", http_port);/* / https {}", http_port, https_port);*/
-    //try_join!(server_http, server_https)?;
+    info!("HTTP server running on TCP {}", http_port);
     Ok(server_http.await?)
 }

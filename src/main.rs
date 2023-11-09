@@ -1,8 +1,5 @@
-#![feature(async_closure)]
-
 #[cfg(feature = "dns")]
 mod dns;
-//mod cert;
 mod http;
 mod config;
 mod gs_tcp;
@@ -19,7 +16,6 @@ use structopt::StructOpt;
 use futures::future::select_all;
 use tokio::sync::RwLock;
 use crate::backend::backends::Backends;
-//use crate::cert::get_cert;
 use crate::dns::run_dns;
 use crate::gs_tcp::run_gs_tcp;
 use crate::gs_udp::run_gs_udp;
@@ -37,9 +33,6 @@ struct Opt {
     /// Port the HTTP server will listen on.
     #[structopt(short = "p", long = "http-port", default_value = "80")]
     http_port: u16,
-    /*/// Port the HTTPS server will listen on.
-    #[structopt(short = "s", long = "https-port", default_value = "443")]
-    https_port: u16,*/
     /// Port the DNS server will listen on.
     #[cfg(feature = "dns")]
     #[structopt(short = "d", long = "dns-port", default_value = "53")]
@@ -72,9 +65,6 @@ async fn main() -> Result<(), Error> {
     let backends_ref = Arc::new(RwLock::new(Backends::new()));
     let mut servers = vec![];
 
-    // Initialize certificates
-    /*let cert = get_cert()?;*/
-
     // dns
     #[cfg(feature = "dns")]
     servers.push(tokio::spawn(async move {
@@ -84,7 +74,7 @@ async fn main() -> Result<(), Error> {
     // http
     let br = backends_ref.clone();
     servers.push(tokio::spawn(async move {
-        run_http(opt.http_port/*, opt.https_port, cert*/, br).await
+        run_http(opt.http_port, br).await
     }));
 
     // udp

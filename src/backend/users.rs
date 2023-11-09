@@ -173,17 +173,17 @@ impl UsersBackend {
                     }
                     makercd = Some(u8::from_str_radix(&v, 16)?)
                 },
-                "passwd" => passwd = Some(u16::from_str_radix(&v, 10)?),
+                "passwd" => passwd = Some(v.parse::<u16>()?),
                 "sdkver" => {
                     if v.len() != 6 {
                         return Err(anyhow!("Invalid 'sdkver': {}", v))
                     }
-                    let major = u8::from_str_radix(&v[0..3], 10)?;
-                    let minor  = u8::from_str_radix(&v[3..6], 10)?;
+                    let major = v[0..3].parse::<u8>()?;
+                    let minor  = v[3..6].parse::<u8>()?;
                     sdkver = Some((major, minor))
                 },
-                "unitcd" => unitcd = Some(u32::from_str_radix(&v, 10)?),
-                "userid" => userid = Some(u64::from_str_radix(&v, 10)?), // TODO: Assert < 32pow10
+                "unitcd" => unitcd = Some(v.parse::<u32>()?),
+                "userid" => userid = Some(v.parse::<u64>()?), // TODO: Assert < 32pow10
                 _ => {}
             }
         }

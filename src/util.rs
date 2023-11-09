@@ -73,7 +73,7 @@ pub fn decode_cr(src: &[u8], key: &[u8]) -> Option<Vec<u8>> {
         return None
     }
     let keysz = key.len();
-    let mut enctmp = (0..=255).into_iter().collect::<Vec<u8>>();
+    let mut enctmp = (0..=255).collect::<Vec<u8>>();
 
     let mut a: usize = 0;
     for i in 0..256 {

@@ -1,6 +1,6 @@
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
-use anyhow::{anyhow, Error};
+use anyhow::{Error};
 use data_encoding::BASE64;
 use rand::Rng;
 use crate::backend::users::UserInfo;

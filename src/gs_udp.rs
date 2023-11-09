@@ -10,11 +10,10 @@ use packed_struct::prelude::*;
 use packed_struct::prelude::bits::ByteArray;
 use std::net::{IpAddr, SocketAddr};
 use bytes::{Buf, Bytes};
-use futures::FutureExt;
 use itertools::Itertools;
 use crate::backend::backends::BackendsRef;
 use crate::gs_udp::MessageType::*;
-use crate::util::{advance_nul, decode_cr, random_string};
+use crate::util::{advance_nul, random_string};
 
 // see http://www.pipian.net/ierukana/hacking/ds_nwc.html
 #[derive(PrimitiveEnum_u8, Clone, Copy, Debug, PartialEq)]
@@ -121,7 +120,7 @@ fn make_server_datagram(message_type: MessageType, client_id: u32, body: &[u8]) 
     Ok(data)
 }
 
-async fn handle_available(srv: &mut UdpServer, peer: SocketAddr, header: ClientDatagramHeader, msg: Bytes) -> Result<(), Error> {
+async fn handle_available(srv: &mut UdpServer, peer: SocketAddr, header: ClientDatagramHeader, _msg: Bytes) -> Result<(), Error> {
     // TODO: It seems the game doesn't actually send the gamename.
     //       So we just report back it's available. The game ignores the answer anyway.
     debug!("GS UDP: Sending available response.");
@@ -161,8 +160,8 @@ async fn handle_heartbeat(srv: &mut UdpServer, peer: SocketAddr, header: ClientD
             IpAddr::V4(v4) => v4.octets(),
             IpAddr::V6(_) => return Err(anyhow!("Client connected via Ipv6, this is currently not supported.")),
         };
-        let ipocts_bytes = ipocts.into_iter().map(|x| format!("{:02X}", x).as_bytes().to_vec()).flatten().collect_vec();
-        let port_bytes = peer.port().to_be_bytes().into_iter().map(|x| format!("{:02X}", x).as_bytes().to_vec()).flatten().collect_vec();
+        let ipocts_bytes = ipocts.into_iter().flat_map(|x| format!("{:02X}", x).as_bytes().to_vec()).collect_vec();
+        let port_bytes = peer.port().to_be_bytes().into_iter().flat_map(|x| format!("{:02X}", x).as_bytes().to_vec()).collect_vec();
         let body = peer_state.challenge.iter()
             .chain(b"00")
             .copied()
@@ -181,7 +180,7 @@ async fn handle_heartbeat(srv: &mut UdpServer, peer: SocketAddr, header: ClientD
 
 async fn handle_challenge_response(
     srv: &mut UdpServer, peer: SocketAddr,
-    header: ClientDatagramHeader, mut msg: Bytes
+    header: ClientDatagramHeader, _msg: Bytes
 ) -> Result<(), Error> {
 
     let peer_state: &mut PeerState;

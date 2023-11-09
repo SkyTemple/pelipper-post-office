@@ -21,12 +21,12 @@ use trust_dns_server::proto::rr::Record;
 use trust_dns_server::store::in_memory::InMemoryAuthority;
 
 //const MASTER_DOMAIN: &'static str = "nintendowifi.net";
-const MASTER_DOMAIN: &'static str = "wc.skytemple.org";
+const MASTER_DOMAIN: &str = "wc.skytemple.org";
 
-pub(crate) const DN_CONNTEST: &'static str = concatcp!("conntest.", MASTER_DOMAIN);
-pub(crate) const DN_NAS: &'static str = concatcp!("nas.", MASTER_DOMAIN);
-pub(crate) const DN_GAMESTATS: &'static str = concatcp!("gamestats2.gs.", MASTER_DOMAIN);
-const DNS_NAMES: [&'static str; 7] = [
+pub(crate) const DN_CONNTEST: &str = concatcp!("conntest.", MASTER_DOMAIN);
+pub(crate) const DN_NAS: &str = concatcp!("nas.", MASTER_DOMAIN);
+pub(crate) const DN_GAMESTATS: &str = concatcp!("gamestats2.gs.", MASTER_DOMAIN);
+const DNS_NAMES: [&str; 7] = [
     MASTER_DOMAIN,
     DN_NAS,
     concatcp!("gs.", MASTER_DOMAIN),

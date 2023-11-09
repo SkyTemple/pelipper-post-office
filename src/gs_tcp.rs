@@ -23,7 +23,7 @@ struct ReadInBuf {
     buf: [u8; 10240]
 }
 
-const FINAL: &'static str = "final";
+const FINAL: &str = "final";
 #[derive(Debug)]
 enum MaybeFinal<T, U> {
     Final,
@@ -120,7 +120,7 @@ async fn send_err(stream: &mut TcpStream, fatal: bool, errmsg: &str, errcode: u3
     }
     cerr.insert("errmsg", errmsg);
     debug!("GS TCP server; {:?}; Sending error: {:?}", stream.peer_addr(), cerr);
-    stream.write(&make_response(cerr)).await?;
+    stream.write_all(&make_response(cerr)).await?;
     Ok(())
 }
 
@@ -179,13 +179,13 @@ async fn login_peer(server_challenge: &str, stream: &mut TcpStream, buf: &mut Re
                                 let mut rsp = IndexMap::new();
                                 rsp.insert("lc", "2");
                                 rsp.insert("sesskey", &sesskey_str);
-                                rsp.insert("proof", &proof);
+                                rsp.insert("proof", proof);
                                 rsp.insert("userid", &userid);
                                 rsp.insert("profileid", &profileid);
                                 rsp.insert("uniquenick", &uniquenick);
                                 rsp.insert("lt", &lt);
                                 rsp.insert("id", "1");
-                                stream.write(&make_response(rsp)).await?;
+                                stream.write_all(&make_response(rsp)).await?;
                                 Ok(sess_entry.remove())
                             } else {
                                 Err(anyhow!("Failed CR."))
@@ -212,8 +212,8 @@ async fn login_peer(server_challenge: &str, stream: &mut TcpStream, buf: &mut Re
 }
 
 async fn validate_profile_request(
-    payload: &mut HashMap<String, String>, session: &Session, stream: &mut TcpStream,
-    buf: &mut ReadInBuf, backends: &BackendsRef, validate_profile_id: bool
+    payload: &mut HashMap<String, String>, session: &Session, _stream: &mut TcpStream,
+    _buf: &mut ReadInBuf, backends: &BackendsRef, validate_profile_id: bool
 ) -> Result<String, Error> {
     let bread = backends.read().await;
     if let Some(sesskey) = payload.remove("sesskey") {
@@ -270,7 +270,7 @@ async fn serve_profile(session: &Session, stream: &mut TcpStream, buf: &mut Read
     rsp.insert("userid", userid);
     rsp.extend(profile.into_iter());
     rsp.insert("id", sequence_id);
-    stream.write(&make_response(rsp)).await?;
+    stream.write_all(&make_response(rsp)).await?;
     Ok(())
 }
 
@@ -308,7 +308,7 @@ async fn process_socket(mut stream: TcpStream, backends: BackendsRef) -> Result<
     creq.insert("lc", "1");
     creq.insert("challenge", &challenge);
     creq.insert("id", "1");
-    stream.write(&make_response(creq)).await?;
+    stream.write_all(&make_response(creq)).await?;
 
     let mut state = PeerState::WaitingForCr(challenge);
 
@@ -372,7 +372,7 @@ async fn process_socket(mut stream: TcpStream, backends: BackendsRef) -> Result<
                 debug!("GS TCP server; {:?}; Got LOGOUT with payload: {:?}", stream.peer_addr(), payload);
                 return Ok(());
             },
-            Msg("status", status) => {
+            Msg("status", _status) => {
                 // TODO: Process?
                 let payload = stream_read_collect_payload(&mut stream, &mut buf).await?;
                 debug!("GS TCP server; {:?}; Got a STATUS: {:?}", stream.peer_addr(), payload);
