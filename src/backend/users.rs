@@ -1,12 +1,12 @@
-use std::collections::hash_map::Entry;
-use std::collections::HashMap;
+use crate::backend::games::GamesBackend;
+use crate::util::{md5sum, userid_base32};
 use anyhow::{anyhow, Error};
 use indexmap::IndexMap;
 use log::debug;
 use rand::Rng;
+use std::collections::hash_map::Entry;
+use std::collections::HashMap;
 use tokio::sync::RwLockReadGuard;
-use crate::backend::games::GamesBackend;
-use crate::util::{md5sum, userid_base32};
 
 #[derive(Debug)]
 pub struct GsAccount {
@@ -22,12 +22,12 @@ pub struct GsAccount {
     passwd: u16,
     sdkver: (u8, u8),
     unitcd: u32,
-    pub userid: u64
+    pub userid: u64,
 }
 
 #[derive(Debug)]
 struct UserProfile {
-    lastname: Option<String>
+    lastname: Option<String>,
 }
 
 impl UserProfile {
@@ -51,7 +51,7 @@ impl UserInfo {
         let mut profile = IndexMap::new();
         profile.insert("userid", self.userid.unwrap().to_string());
         profile.insert("email", format!("{}@nds", self.uniquenick));
-        profile.insert("sig", md5sum(""));  // TODO?
+        profile.insert("sig", md5sum("")); // TODO?
         profile.insert("uniquenick", self.uniquenick.clone());
         if let Some(lastname) = &r_profile.lastname {
             profile.insert("lastname", lastname.clone());
@@ -105,13 +105,15 @@ impl UserInfo {
 
 pub struct UsersBackend {
     // TODO: replace with a db!
-    users: HashMap<String, UserInfo>  // uniquenick, user info
+    users: HashMap<String, UserInfo>, // uniquenick, user info
 }
 
 impl UsersBackend {
     pub fn new() -> Self {
         // TODO
-        Self { users: HashMap::new() }
+        Self {
+            users: HashMap::new(),
+        }
     }
 
     pub async fn get_user(&self, uniquenick: &str) -> Option<&UserInfo> {
@@ -122,10 +124,17 @@ impl UsersBackend {
         self.users.get_mut(uniquenick)
     }
 
-    pub async fn create_or_loadfrom_hashmap(&mut self, gs_input_data: HashMap<String, String>, games: RwLockReadGuard<'_, GamesBackend>) -> Result<&UserInfo, Error> {
+    pub async fn create_or_loadfrom_hashmap(
+        &mut self,
+        gs_input_data: HashMap<String, String>,
+        games: RwLockReadGuard<'_, GamesBackend>,
+    ) -> Result<&UserInfo, Error> {
         // todo acctcreate not supported (gsbrcd empty!), used when deleting wifi data -> need to index via userid and gamecd (id) instead of uniquenick :(
         if gs_input_data.get("action").map(|x| x.as_str()) != Some("login") {
-            return Err(anyhow!("Invalid user creation request: 'action' must be 'login', is: {:?}", gs_input_data.get("action")))
+            return Err(anyhow!(
+                "Invalid user creation request: 'action' must be 'login', is: {:?}",
+                gs_input_data.get("action")
+            ));
         }
         let mut apinfo: Option<String> = None;
         let mut birth: Option<(u8, u8)> = None;
@@ -145,43 +154,43 @@ impl UsersBackend {
                 "apinfo" => apinfo = Some(v),
                 "birth" => {
                     if v.len() != 4 {
-                        return Err(anyhow!("Invalid 'birth': {}", v))
+                        return Err(anyhow!("Invalid 'birth': {}", v));
                     }
                     let month = u8::from_str_radix(&v[0..2], 16)?;
-                    let day  = u8::from_str_radix(&v[2..4], 16)?;
+                    let day = u8::from_str_radix(&v[2..4], 16)?;
                     birth = Some((month, day))
-                },
+                }
                 "devname" => devname = Some(v),
                 "ingamesn" => ingamesn = Some(v),
                 "gamecd" => {
                     if games.game_for_gameid(&v).await.is_none() {
-                        return Err(anyhow!("Game {} not supported.", v))
+                        return Err(anyhow!("Game {} not supported.", v));
                     }
                     gamecd = Some(v)
-                },
+                }
                 "gsbrcd" => gsbrcd = Some(v),
                 "lang" => {
                     if v.len() != 2 {
-                        return Err(anyhow!("Invalid 'lang': {}", v))
+                        return Err(anyhow!("Invalid 'lang': {}", v));
                     }
                     lang = Some(u8::from_str_radix(&v, 16)?)
-                },
+                }
                 "macadr" => macadr = Some(v),
                 "makercd" => {
                     if v.len() != 2 {
-                        return Err(anyhow!("Invalid 'makercd': {}", v))
+                        return Err(anyhow!("Invalid 'makercd': {}", v));
                     }
                     makercd = Some(u8::from_str_radix(&v, 16)?)
-                },
+                }
                 "passwd" => passwd = Some(v.parse::<u16>()?),
                 "sdkver" => {
                     if v.len() != 6 {
-                        return Err(anyhow!("Invalid 'sdkver': {}", v))
+                        return Err(anyhow!("Invalid 'sdkver': {}", v));
                     }
                     let major = v[0..3].parse::<u8>()?;
-                    let minor  = v[3..6].parse::<u8>()?;
+                    let minor = v[3..6].parse::<u8>()?;
                     sdkver = Some((major, minor))
-                },
+                }
                 "unitcd" => unitcd = Some(v.parse::<u32>()?),
                 "userid" => userid = Some(v.parse::<u64>()?), // TODO: Assert < 32pow10
                 _ => {}
@@ -189,7 +198,10 @@ impl UsersBackend {
         }
         let userid = unpack_or_err(userid, "userid")?;
         let gsbrcd = unpack_or_err(gsbrcd, "gsbrcd")?;
-        let uniquenick: String = userid_base32(userid).chars().chain(gsbrcd.chars().take(11)).collect();
+        let uniquenick: String = userid_base32(userid)
+            .chars()
+            .chain(gsbrcd.chars().take(11))
+            .collect();
         let gs_account = GsAccount {
             apinfo: unpack_or_err(apinfo, "apinfo")?,
             birth: unpack_or_err(birth, "birth")?,
@@ -217,7 +229,7 @@ impl UsersBackend {
                     userid: None,
                     uniquenick: uniquenick.clone(),
                     profileid: None,
-                    profile: None
+                    profile: None,
                 };
                 // TODO: Replace with db insert.
                 debug!("Created new profile: {:?}", user);
@@ -231,6 +243,6 @@ impl UsersBackend {
 fn unpack_or_err<T>(val: Option<T>, name: &str) -> Result<T, Error> {
     match val {
         None => Err(anyhow!("Field '{}' missing.", name)),
-        Some(v) => Ok(v)
+        Some(v) => Ok(v),
     }
 }

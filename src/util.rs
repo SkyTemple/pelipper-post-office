@@ -12,7 +12,7 @@ pub(crate) fn md5sum(input: &str) -> String {
 pub(crate) fn random_string<T, R, const N: usize>(char_range: R) -> [T; N]
 where
     T: SampleUniform + Default + Copy,
-    R: SampleRange<T> + Clone
+    R: SampleRange<T> + Clone,
 {
     let mut rng = rand::thread_rng();
     let mut c: [T; N] = [T::default(); N];
@@ -26,7 +26,10 @@ where
 /// Advances the cursor after that byte.
 /// Stops at end of buffer.
 /// Returns None if the end was reached or content is empty.
-pub(crate) fn advance_nul<B>(mut buf: B) -> Option<Vec<u8>> where B: Buf {
+pub(crate) fn advance_nul<B>(mut buf: B) -> Option<Vec<u8>>
+where
+    B: Buf,
+{
     let mut content = Vec::with_capacity(buf.remaining());
     let mut finished = false;
     while buf.has_remaining() {
@@ -70,7 +73,7 @@ pub fn decode_cr(src: &[u8], key: &[u8]) -> Option<Vec<u8>> {
     let mut dst = Vec::with_capacity(89);
     let size = src.len();
     if !(1..=65).contains(&size) {
-        return None
+        return None;
     }
     let keysz = key.len();
     let mut enctmp = (0..=255).collect::<Vec<u8>>();
@@ -114,30 +117,28 @@ pub fn decode_cr(src: &[u8], key: &[u8]) -> Option<Vec<u8>> {
 }
 
 fn gsvalfunc(reg: u8) -> u8 {
-     if reg < 26 {
-         return reg + b'A';
-     }
-     if reg < 52 {
-         return reg + b'G';
-     }
-     if reg < 62 {
-         return reg - 4;
-     }
-     if reg == 62 {
-         return b'+';
-     }
-     if reg == 63 {
-         return b'/';
-     }
-     0
+    if reg < 26 {
+        return reg + b'A';
+    }
+    if reg < 52 {
+        return reg + b'G';
+    }
+    if reg < 62 {
+        return reg - 4;
+    }
+    if reg == 62 {
+        return b'+';
+    }
+    if reg == 63 {
+        return b'/';
+    }
+    0
 }
 
 pub(crate) fn userid_base32(input: u64) -> String {
     const TABLE: [char; 32] = [
-        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-        'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j',
-        'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
-        'u', 'v'
+        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h',
+        'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
     ];
     let mut str = ['0'; 9];
     let mut rest = input;

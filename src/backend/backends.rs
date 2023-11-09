@@ -1,8 +1,8 @@
-use std::sync::Arc;
-use tokio::sync::RwLock;
 use crate::backend::games::GamesBackend;
 use crate::backend::sessions::SessionsBackend;
 use crate::backend::users::UsersBackend;
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 pub type BackendsRef = Arc<RwLock<Backends>>;
 

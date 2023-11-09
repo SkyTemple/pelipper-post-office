@@ -1,25 +1,25 @@
+mod backend;
+mod config;
 #[cfg(feature = "dns")]
 mod dns;
-mod http;
-mod config;
+mod gamestats;
 mod gs_tcp;
 mod gs_udp;
+mod http;
 mod util;
-mod backend;
-mod gamestats;
 
-use std::net::Ipv4Addr;
-use std::sync::Arc;
-use anyhow::Error;
-use log::{info, warn};
-use structopt::StructOpt;
-use futures::future::select_all;
-use tokio::sync::RwLock;
 use crate::backend::backends::Backends;
 use crate::dns::run_dns;
 use crate::gs_tcp::run_gs_tcp;
 use crate::gs_udp::run_gs_udp;
 use crate::http::run_http;
+use anyhow::Error;
+use futures::future::select_all;
+use log::{info, warn};
+use std::net::Ipv4Addr;
+use std::sync::Arc;
+use structopt::StructOpt;
+use tokio::sync::RwLock;
 
 #[derive(StructOpt, Debug)]
 #[structopt()]
@@ -56,7 +56,7 @@ async fn main() -> Result<(), Error> {
     stderrlog::new()
         .module(module_path!())
         .quiet(opt.quiet)
-        .verbosity(if opt.verbose {3} else {2})
+        .verbosity(if opt.verbose { 3 } else { 2 })
         .timestamp(stderrlog::Timestamp::Millisecond)
         .init()?;
 
@@ -73,9 +73,9 @@ async fn main() -> Result<(), Error> {
 
     // http
     let br = backends_ref.clone();
-    servers.push(tokio::spawn(async move {
-        run_http(opt.http_port, br).await
-    }));
+    servers.push(tokio::spawn(
+        async move { run_http(opt.http_port, br).await },
+    ));
 
     // udp
     let br = backends_ref.clone();

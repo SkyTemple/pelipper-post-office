@@ -1,44 +1,41 @@
-use std::collections::HashMap;
-use std::net::{SocketAddr};
-use anyhow::{anyhow, Error};
-use chrono::Utc;
-use const_format::concatcp;
-use data_encoding::{BASE64, DecodeError};
-use hyper::{Body, body, Method, Request, Response, Server, StatusCode};
-use hyper::service::{make_service_fn, service_fn};
-use itertools::Itertools;
-use log::{debug, info, warn};
-use tokio::sync::RwLockWriteGuard;
 use crate::backend::backends::BackendsRef;
 use crate::backend::sessions::SessionsBackend;
 use crate::backend::users::UserInfo;
 use crate::gamestats::set_profile::gs_set_profile;
 use crate::util::VERSION;
+use anyhow::{anyhow, Error};
+use chrono::Utc;
+use const_format::concatcp;
+use data_encoding::{DecodeError, BASE64};
+use hyper::service::{make_service_fn, service_fn};
+use hyper::{body, Body, Method, Request, Response, Server, StatusCode};
+use itertools::Itertools;
+use log::{debug, info, warn};
+use std::collections::HashMap;
+use std::net::SocketAddr;
+use tokio::sync::RwLockWriteGuard;
 
 fn extract_host(req: &Request<Body>) -> String {
     match req.headers().get("Host").map(|x| x.to_str()) {
-        Some(Ok(v)) => {
-            v.to_string()
-        },
-        _ => {
-            req.uri().host().unwrap_or("???").to_string()
-        }
+        Some(Ok(v)) => v.to_string(),
+        _ => req.uri().host().unwrap_or("???").to_string(),
     }
 }
 
 #[inline]
 fn base64_decode(inp: &str) -> Result<Vec<u8>, DecodeError> {
-    BASE64.decode(inp
-        .replace('*', "=")
-        .replace('-', "/")
-        .replace('_', "+")
-        .as_bytes()
+    BASE64.decode(
+        inp.replace('*', "=")
+            .replace('-', "/")
+            .replace('_', "+")
+            .as_bytes(),
     )
 }
 
 #[inline]
 fn base64_encode(inp: &str) -> String {
-    BASE64.encode(inp.as_bytes())
+    BASE64
+        .encode(inp.as_bytes())
         .replace('=', "*")
         .replace('/', "-")
         .replace('+', "_")
@@ -54,18 +51,12 @@ async fn parse_request_body(req: &mut Request<Body>) -> Result<HashMap<String, S
                 for (b1, b2) in base64_decode(v)?.into_iter().tuples() {
                     b64u16.push((b1) as u16 + (((b2) as u16) << 8))
                 }
-                parsed.insert(
-                    k.to_string(),
-                    String::from_utf16(&b64u16)?
-                );
+                parsed.insert(k.to_string(), String::from_utf16(&b64u16)?);
             } else {
-                parsed.insert(
-                    k.to_string(),
-                    String::from_utf8(base64_decode(v)?)?
-                );
+                parsed.insert(k.to_string(), String::from_utf8(base64_decode(v)?)?);
             }
         } else {
-            return Err(anyhow!("Failed to parse {}.", kv))
+            return Err(anyhow!("Failed to parse {}.", kv));
         }
     }
     Ok(parsed)
@@ -78,7 +69,11 @@ fn make_response_body(map: HashMap<&str, &str>) -> String {
         .join("&")
 }
 
-async fn gs_register_respond(_req: Request<Body>, user: Option<&UserInfo>, mut session_backend: RwLockWriteGuard<'_, SessionsBackend>) -> Response<Body> {
+async fn gs_register_respond(
+    _req: Request<Body>,
+    user: Option<&UserInfo>,
+    mut session_backend: RwLockWriteGuard<'_, SessionsBackend>,
+) -> Response<Body> {
     let mut response_map = HashMap::new();
     // challenge - A random 8-character challenge string (upper-case ASCII only) to be used as the password when logging in to GameSpy for this session
     // locator - Usage unknown. Always gamespy.com
@@ -96,7 +91,10 @@ async fn gs_register_respond(_req: Request<Body>, user: Option<&UserInfo>, mut s
         // Success
         Some(u) => {
             let session = session_backend.new_for(u).await;
-            debug!("Success during registration: Sending session: {:?}", session);
+            debug!(
+                "Success during registration: Sending session: {:?}",
+                session
+            );
             response_map.insert("retry", "0");
             response_map.insert("returncd", "001");
             response_map.insert("challenge", &session.challenge);
@@ -113,30 +111,54 @@ async fn gs_register_respond(_req: Request<Body>, user: Option<&UserInfo>, mut s
         .unwrap_or_default() // not ideal but what you gonna do.
 }
 
-async fn gs_register(mut req: Request<Body>, backends: BackendsRef) -> Result<Response<Body>, hyper::Error> {
+async fn gs_register(
+    mut req: Request<Body>,
+    backends: BackendsRef,
+) -> Result<Response<Body>, hyper::Error> {
     debug!("Client tries to register.");
     match parse_request_body(&mut req).await {
         Ok(request_data) => {
             let bwrite = backends.write().await;
-            match bwrite.users.write().await.create_or_loadfrom_hashmap(request_data, bwrite.games.read().await).await {
+            match bwrite
+                .users
+                .write()
+                .await
+                .create_or_loadfrom_hashmap(request_data, bwrite.games.read().await)
+                .await
+            {
                 Ok(user) => {
-                    return Ok(gs_register_respond(req, Some(user), bwrite.sessions.write().await).await)
-                },
-                Err(e) => warn!("GS /ac: Failed to register a user. Error: {} -- {}", e, e.backtrace())
+                    return Ok(
+                        gs_register_respond(req, Some(user), bwrite.sessions.write().await).await,
+                    )
+                }
+                Err(e) => warn!(
+                    "GS /ac: Failed to register a user. Error: {} -- {}",
+                    e,
+                    e.backtrace()
+                ),
             };
         }
-        Err(e) => warn!("GS /ac: Client sent invalid data during registration, ghosting. Error: {} -- {}", e, e.backtrace())
+        Err(e) => warn!(
+            "GS /ac: Client sent invalid data during registration, ghosting. Error: {} -- {}",
+            e,
+            e.backtrace()
+        ),
     }
     Ok(gs_register_respond(req, None, backends.write().await.sessions.write().await).await)
 }
 
-async fn svc_http_service(req: Request<Body>, backends: BackendsRef) -> Result<Response<Body>, hyper::Error> {
+async fn svc_http_service(
+    req: Request<Body>,
+    backends: BackendsRef,
+) -> Result<Response<Body>, hyper::Error> {
     let (host, method, path) = (extract_host(&req), req.method(), req.uri().path());
     debug!("HTTP request: {:?}", (&host, method, path));
     match (host.as_str(), method, path) {
-        (crate::dns::DN_CONNTEST, &Method::GET, "/") => Ok(Response::new(Body::from("OK", ))),
+        (crate::dns::DN_CONNTEST, &Method::GET, "/") => Ok(Response::new(Body::from("OK"))),
         (crate::dns::DN_NAS, &Method::POST, "/ac") => gs_register(req, backends).await,
-        (crate::dns::DN_GAMESTATS, &Method::GET, "/pokedungeonds/web/common/setProfile.asp") => gs_set_profile(req, backends).await,
+        (crate::dns::DN_GAMESTATS, &Method::GET, "/pokedungeonds/web/common/setProfile.asp") => {
+            gs_set_profile(req, backends).await
+        }
         // Return the 404 Not Found for other routes.
         _ => {
             let mut not_found = Response::default();
@@ -149,16 +171,15 @@ async fn svc_http_service(req: Request<Body>, backends: BackendsRef) -> Result<R
 pub async fn run_http<'a>(http_port: u16, backends: BackendsRef) -> Result<(), anyhow::Error> {
     let http_addr = SocketAddr::from(([0, 0, 0, 0], http_port));
 
-    let server_http = Server::bind(&http_addr)
-        .serve(make_service_fn(move |_| {
-            let ibackends = backends.clone();
-            async move {
-                Ok::<_, hyper::Error>(service_fn(move |req| {
-                    let iibackends = ibackends.clone();
-                    svc_http_service(req, iibackends)
-                }))
-            }
-        }));
+    let server_http = Server::bind(&http_addr).serve(make_service_fn(move |_| {
+        let ibackends = backends.clone();
+        async move {
+            Ok::<_, hyper::Error>(service_fn(move |req| {
+                let iibackends = ibackends.clone();
+                svc_http_service(req, iibackends)
+            }))
+        }
+    }));
     info!("HTTP server running on TCP {}", http_port);
     Ok(server_http.await?)
 }

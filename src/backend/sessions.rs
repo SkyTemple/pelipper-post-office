@@ -1,10 +1,10 @@
-use std::collections::hash_map::Entry;
-use std::collections::HashMap;
-use anyhow::{Error};
-use data_encoding::BASE64;
-use rand::Rng;
 use crate::backend::users::UserInfo;
 use crate::util::random_string;
+use anyhow::Error;
+use data_encoding::BASE64;
+use rand::Rng;
+use std::collections::hash_map::Entry;
+use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct Session {
@@ -26,8 +26,8 @@ impl Session {
 
 pub struct SessionsBackend {
     // TODO: replace with redis?
-    sessions_waiting: HashMap<String, Session>,  // token, Session
-    // Established sessions get taken out and assigned to TCP connections.
+    sessions_waiting: HashMap<String, Session>, // token, Session
+                                                // Established sessions get taken out and assigned to TCP connections.
 }
 
 impl SessionsBackend {
@@ -41,12 +41,13 @@ impl SessionsBackend {
         let challenge = Self::generate_challenge();
         let token = Self::generate_token();
         self.sessions_waiting.insert(
-            token.clone(), Session {
+            token.clone(),
+            Session {
                 user: user.uniquenick.clone(),
                 challenge,
                 token: token.clone(),
-                sesskey: None
-            }
+                sesskey: None,
+            },
         );
         self.sessions_waiting.get(&token).unwrap()
     }
@@ -67,6 +68,6 @@ impl SessionsBackend {
         // this session. Appears to be a random string of 96 bytes, which is then
         // base64-encoded and prefixed by "NDS"
         let ch: [u8; 96] = random_string(0x00..0xFF);
-        return "NDS".chars().chain(BASE64.encode(&ch).chars()).collect()
+        return "NDS".chars().chain(BASE64.encode(&ch).chars()).collect();
     }
 }
