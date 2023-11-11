@@ -1,5 +1,6 @@
 use crate::backend::backends::BackendsRef;
 use crate::backend::sessions::Session;
+use crate::backend::users::UserIdent;
 use crate::gs_tcp::MaybeFinal::{Final, Msg};
 use crate::util::{md5sum, random_string};
 use anyhow::{anyhow, Error};
@@ -264,7 +265,7 @@ async fn validate_profile_request(
     _buf: &mut ReadInBuf,
     backends: &BackendsRef,
     validate_profile_id: bool,
-) -> Result<String, Error> {
+) -> Result<UserIdent, Error> {
     let bread = backends.read().await;
     if let Some(sesskey) = payload.remove("sesskey") {
         let sesskey: i32 = match sesskey.parse() {
@@ -315,18 +316,18 @@ async fn serve_profile(
         Some(x) => x,
         _ => return Err(anyhow!("Missing sequence id.")),
     };
-    let unqiuenick =
+    let ident =
         validate_profile_request(&mut payload, session, stream, buf, &backends, true).await?;
     let bread = backends.read().await;
     let uread = bread.users.read().await;
-    let user = uread.get_user(&unqiuenick).await.unwrap();
+    let user = uread.get_user(&ident).await.unwrap();
     let profileid = user.profileid.unwrap().to_string();
     let userid = user.userid.unwrap().to_string();
     let mut rsp = IndexMap::new();
     let profile = user.profile().await?;
     rsp.insert("pi", "2".to_string());
     rsp.insert("profileid", profileid);
-    rsp.insert("nick", unqiuenick);
+    rsp.insert("nick", user.uniquenick());
     rsp.insert("userid", userid);
     rsp.extend(profile.into_iter());
     rsp.insert("id", sequence_id);
@@ -341,11 +342,11 @@ async fn update_profile(
     backends: BackendsRef,
 ) -> Result<(), Error> {
     let mut payload = stream_read_collect_payload(stream, buf).await?;
-    let unqiuenick =
+    let ident =
         validate_profile_request(&mut payload, session, stream, buf, &backends, false).await?;
     let bwrite = backends.write().await;
     let mut uwrite = bwrite.users.write().await;
-    let user = uwrite.get_user_mut(&unqiuenick).await.unwrap();
+    let user = uwrite.get_user_mut(&ident).await.unwrap();
     for (k, v) in payload {
         match k.as_str() {
             "lastname" => {

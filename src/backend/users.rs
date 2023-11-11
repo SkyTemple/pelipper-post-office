@@ -13,9 +13,9 @@ pub struct GsAccount {
     apinfo: String,
     birth: (u8, u8),
     devname: String,
-    ingamesn: String,
+    ingamesn: Option<String>,
     pub gamecd: String,
-    gsbrcd: String,
+    gsbrcd: Option<String>,
     lang: u8,
     macadr: String,
     makercd: u8,
@@ -23,6 +23,16 @@ pub struct GsAccount {
     sdkver: (u8, u8),
     unitcd: u32,
     pub userid: u64,
+}
+
+impl GsAccount {
+    pub fn ident(&self) -> UserIdent {
+        UserIdent {
+            userid: self.userid,
+            passwd: self.passwd,
+            gamecd: self.gamecd.clone(),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -36,23 +46,34 @@ impl UserProfile {
     }
 }
 
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+pub struct UserIdent {
+    userid: u64,
+    passwd: u16,
+    gamecd: String,
+}
+
 #[derive(Debug)]
 pub struct UserInfo {
     pub gs_account: GsAccount,
     pub(crate) userid: Option<u32>,
     pub(crate) profileid: Option<i32>,
     profile: Option<UserProfile>,
-    pub uniquenick: String,
 }
 
 impl UserInfo {
+    pub fn ident(&self) -> UserIdent {
+        self.gs_account.ident()
+    }
+
     pub(crate) async fn profile(&self) -> Result<IndexMap<&'static str, String>, Error> {
         let r_profile = self.profile.as_ref().unwrap();
         let mut profile = IndexMap::new();
+        let uniquenick = self.uniquenick();
         profile.insert("userid", self.userid.unwrap().to_string());
-        profile.insert("email", format!("{}@nds", self.uniquenick));
+        profile.insert("email", format!("{}@nds", uniquenick));
         profile.insert("sig", md5sum("")); // TODO?
-        profile.insert("uniquenick", self.uniquenick.clone());
+        profile.insert("uniquenick", uniquenick);
         if let Some(lastname) = &r_profile.lastname {
             profile.insert("lastname", lastname.clone());
         }
@@ -61,6 +82,10 @@ impl UserInfo {
         profile.insert("lat", "0.000000".to_string());
         profile.insert("loc", "".to_string());
         Ok(profile)
+    }
+
+    pub fn uniquenick(&self) -> String {
+        format!("{}+{}", self.gs_account.userid, self.gs_account.gamecd)
     }
 
     pub(crate) async fn profile_update_lastname(&mut self, value: String) -> Result<(), Error> {
@@ -99,13 +124,13 @@ impl UserInfo {
             self.profile = Some(UserProfile::new());
         }
 
-        Ok((userid, profileid, self.uniquenick.clone()))
+        Ok((userid, profileid, self.uniquenick()))
     }
 }
 
 pub struct UsersBackend {
     // TODO: replace with a db!
-    users: HashMap<String, UserInfo>, // uniquenick, user info
+    users: HashMap<UserIdent, UserInfo>,
 }
 
 impl UsersBackend {
@@ -116,12 +141,12 @@ impl UsersBackend {
         }
     }
 
-    pub async fn get_user(&self, uniquenick: &str) -> Option<&UserInfo> {
-        self.users.get(uniquenick)
+    pub async fn get_user(&self, query: &UserIdent) -> Option<&UserInfo> {
+        self.users.get(query)
     }
 
-    pub async fn get_user_mut(&mut self, uniquenick: &str) -> Option<&mut UserInfo> {
-        self.users.get_mut(uniquenick)
+    pub async fn get_user_mut(&mut self, query: &UserIdent) -> Option<&mut UserInfo> {
+        self.users.get_mut(query)
     }
 
     pub async fn create_or_loadfrom_hashmap(
@@ -129,26 +154,12 @@ impl UsersBackend {
         gs_input_data: HashMap<String, String>,
         games: RwLockReadGuard<'_, GamesBackend>,
     ) -> Result<&UserInfo, Error> {
-        // todo acctcreate not properly supported (gsbrcd empty!), used when doing conntest and deleting wifi data -> need to index via userid and gamecd (id) instead of uniquenick :(
-        if gs_input_data.get("action").map(|x| x.as_str()) != Some("login") {
-            // data during conntest:
-            // pelipper-post-office-ppo-1  | [src/backend/users.rs:134] &gs_input_data = {
-            // pelipper-post-office-ppo-1  |     "apinfo": "00:0000000-00",
-            // pelipper-post-office-ppo-1  |     "devtime": "231109222233",
-            // pelipper-post-office-ppo-1  |     "devname": "melonDS",
-            // pelipper-post-office-ppo-1  |     "gamecd": "C2SE",
-            // pelipper-post-office-ppo-1  |     "sdkver": "003001",
-            // pelipper-post-office-ppo-1  |     "macadr": "0009bf112233",
-            // pelipper-post-office-ppo-1  |     "userid": "5877937928489",
-            // pelipper-post-office-ppo-1  |     "makercd": "01",
-            // pelipper-post-office-ppo-1  |     "lang": "01",
-            // pelipper-post-office-ppo-1  |     "birth": "0101",
-            // pelipper-post-office-ppo-1  |     "action": "acctcreate",
-            // pelipper-post-office-ppo-1  |     "passwd": "813",
-            // pelipper-post-office-ppo-1  |     "bssid": "00f077777777",
-            // pelipper-post-office-ppo-1  |     "unit
+        let action_owned = gs_input_data.get("action").cloned();
+        let action = action_owned.as_deref();
+        if action != Some("login") && action != Some("acctcreate") {
+            dbg!(&gs_input_data);
             return Err(anyhow!(
-                "Invalid user creation request: 'action' must be 'login', is: {:?}",
+                "Invalid user creation request: 'action' must be 'login' or 'acctcreate', is: {:?}",
                 gs_input_data.get("action")
             ));
         }
@@ -213,16 +224,11 @@ impl UsersBackend {
             }
         }
         let userid = unpack_or_err(userid, "userid")?;
-        let gsbrcd = unpack_or_err(gsbrcd, "gsbrcd")?;
-        let uniquenick: String = userid_base32(userid)
-            .chars()
-            .chain(gsbrcd.chars().take(11))
-            .collect();
         let gs_account = GsAccount {
             apinfo: unpack_or_err(apinfo, "apinfo")?,
             birth: unpack_or_err(birth, "birth")?,
             devname: unpack_or_err(devname, "devname")?,
-            ingamesn: unpack_or_err(ingamesn, "ingamesn")?,
+            ingamesn,
             gamecd: unpack_or_err(gamecd, "gamecd")?,
             gsbrcd,
             lang: unpack_or_err(lang, "lang")?,
@@ -233,17 +239,28 @@ impl UsersBackend {
             unitcd: unpack_or_err(unitcd, "unitcd")?,
             userid,
         };
-        match self.users.entry(uniquenick.clone()) {
+        let user_ident = gs_account.ident();
+        match self.users.entry(user_ident.clone()) {
             Entry::Occupied(oe) => {
                 let oe_u = oe.into_mut();
-                oe_u.gs_account = gs_account;
-                debug!("Loaded and updated existing profile: {:?}", oe_u);
+                if action == Some("acctcreate") {
+                    let user = UserInfo {
+                        gs_account,
+                        userid: None,
+                        profileid: None,
+                        profile: None,
+                    };
+                    *oe_u = user;
+                    debug!("Recreated profile profile: {:?}", oe_u);
+                } else {
+                    oe_u.gs_account = gs_account;
+                    debug!("Loaded and updated existing profile: {:?}", oe_u);
+                }
             }
             Entry::Vacant(ve) => {
                 let user = UserInfo {
                     gs_account,
                     userid: None,
-                    uniquenick: uniquenick.clone(),
                     profileid: None,
                     profile: None,
                 };
@@ -251,8 +268,8 @@ impl UsersBackend {
                 debug!("Created new profile: {:?}", user);
                 ve.insert(user);
             }
-        }
-        Ok(self.users.get(&uniquenick).unwrap())
+        };
+        Ok(self.users.get(&user_ident).unwrap())
     }
 }
 

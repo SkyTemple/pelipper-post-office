@@ -1,4 +1,4 @@
-use crate::backend::users::UserInfo;
+use crate::backend::users::{UserIdent, UserInfo};
 use crate::util::random_string;
 use anyhow::Error;
 use data_encoding::BASE64;
@@ -8,7 +8,7 @@ use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct Session {
-    pub(crate) user: String,
+    pub(crate) user: UserIdent,
 
     pub(crate) challenge: String,
     pub(crate) token: String,
@@ -43,7 +43,7 @@ impl SessionsBackend {
         self.sessions_waiting.insert(
             token.clone(),
             Session {
-                user: user.uniquenick.clone(),
+                user: user.ident(),
                 challenge,
                 token: token.clone(),
                 sesskey: None,
